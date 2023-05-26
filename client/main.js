@@ -6,10 +6,10 @@ function main() {
         // console.log("OnMessage Called:")
         // console.log(event)
         // console.log(JSON.parse(event.data))
-        console.log(event.data)
         let res = JSON.parse(event.data)
-        console.log(res.Alert)
-        console.log(res.Notice)
+        console.log("alert status: "+res.Alert)
+        console.log("notice content: "+res.Notice)
+        console.log("===========================================")
         // if (event.data[0].Alert) {
         //     console.log("true !!!")
         // }
