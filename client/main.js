@@ -14,6 +14,12 @@ function main() {
         //     console.log("true !!!")
         // }
     }
+
+    source.onerror = (err) => {
+        if (err.message === "connect ECONNREFUSED 127.0.0.1:30000") {
+            // why fiber server did not fulsh?.....not closed from server
+        }
+    }
 }
 
 main()
