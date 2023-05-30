@@ -1,25 +1,25 @@
-const EventSource = require("eventsource")
+const EventSource = require("eventsource");
+const { stringify } = require("querystring");
+const sse = new EventSource("http://localhost:3000/sse")
 
-function main() {
-    const source = new EventSource("http://localhost:3000/sse")
-    source.onmessage = (event) => {
-        // console.log("OnMessage Called:")
-        // console.log(event)
-        // console.log(JSON.parse(event.data))
-        let res = JSON.parse(event.data)
-        console.log("alert status: "+res.Alert)
-        console.log("notice content: "+res.Notice)
-        console.log("===========================================")
-        // if (event.data[0].Alert) {
-        //     console.log("true !!!")
-        // }
-    }
+sse.addEventListener("notice", e => {
+    const data = JSON.parse(e.data);
+    console.log(`notice event: ${data.Notice}`)
+})
 
-    source.onerror = (err) => {
-        if (err.message === "connect ECONNREFUSED 127.0.0.1:30000") {
-            // why fiber server did not fulsh?.....not closed from server
-        }
-    }
+sse.onmessage = e => {
+    console.log(e)
+    const data = JSON.parse(e.data);
+    console.log(`normal event: ${data.Notice}`)
 }
 
-main()
+sse.onerror = e => {
+    let errorMessage = String(e.message)
+    if (
+        errorMessage.includes("connect ECONNREFUSED") ||
+        errorMessage.includes("socket hang up")
+    ) {
+        sse.close()
+        console.log("SSE is closed")
+    }
+}
