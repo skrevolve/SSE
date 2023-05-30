@@ -4,13 +4,12 @@ const sse = new EventSource("http://localhost:3000/sse")
 
 sse.addEventListener("notice", e => {
     const data = JSON.parse(e.data);
-    console.log(`notice event: ${data.Notice}`)
+    if (data.Status) console.log(`notice event: ${data.Description}`)
 })
 
 sse.onmessage = e => {
-    console.log(e)
     const data = JSON.parse(e.data);
-    console.log(`normal event: ${data.Notice}`)
+    if (data.Status) console.log(`normal event: ${data.Description}`)
 }
 
 sse.onerror = e => {

@@ -3,12 +3,14 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/redis/go-redis/v9"
 	"github.com/valyala/fasthttp"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -20,7 +22,13 @@ type Client struct {
 }
 
 type NoticeUrgent struct {
-	Notice string
+	Status 		bool
+	Description string
+}
+
+type Row struct {
+	Status 		bool	`redis:"status"`
+	Description string	`redis:"description"`
 }
 
 func main() {
@@ -30,7 +38,6 @@ func main() {
 		AllowHeaders:     "Cache-Control",
 		AllowCredentials: true,
 	}))
-
 	app.Get("/sse", noticeHandler);
 	// app.Server().GetOpenConnectionsCount()
 	app.Listen(":3000")
@@ -38,9 +45,12 @@ func main() {
 
 func noticeHandler(c *fiber.Ctx) error {
 
-	db, _ := DatabaseInit()
+	//db, _ := DatabaseInit()
+	rdb, _ := RedisInit()
+
 	client := &Client{name: c.Context().RemoteAddr().String(), events: make(chan *NoticeUrgent, 10)}
-	go updateNoticeUrgent(client, db)
+	// go updateNoticeUrgentBySql(client, db)
+	go updateNoticeUrgentByRedis(client, rdb)
 
 	c.Set("Content-Type", "text/event-stream")
 	c.Set("Cache-Control", "no-cache")
@@ -71,24 +81,47 @@ func noticeHandler(c *fiber.Ctx) error {
 	return nil
 }
 
-func updateNoticeUrgent(client *Client, db *gorm.DB) {
-	type Alert struct {
-		Idx	int
-		Alert bool
-		Notice string
-	}
+func updateNoticeUrgentByRedis(client *Client, rdb *redis.Client) {
 
-	result := []Alert{}
+	var row Row
 
 	for {
-		db.Raw(`SELECT alert, notice FROM alert LIMIT 1`).Scan(&result)
-		notice := ""
-		if result[0].Alert {
-			notice = result[0].Notice
+		data, _ := rdb.HGet(context.Background(), "urgent", "notice").Result()
+		json.Unmarshal([]byte(data), &row)
+
+		status := false
+		description := ""
+		if row.Status {
+			status = row.Status
+			description = row.Description
 		}
 
 		db := &NoticeUrgent{
-			Notice: notice,
+			Status: status,
+			Description: description,
+		}
+
+		client.events <- db
+	}
+}
+
+func updateNoticeUrgentBySql(client *Client, db *gorm.DB) {
+
+	row := []Row{}
+
+	for {
+		db.Raw(`SELECT status, description FROM alert LIMIT 1`).Scan(&row)
+
+		status := false
+		description := ""
+		if row[0].Status {
+			status = row[0].Status
+			description = row[0].Description
+		}
+
+		db := &NoticeUrgent{
+			Status: status,
+			Description: description,
 		}
 
 		client.events <- db
@@ -107,9 +140,20 @@ func DatabaseInit() (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	sqlDB.SetMaxIdleConns(10)
-	sqlDB.SetMaxOpenConns(10)
-	sqlDB.SetConnMaxLifetime(time.Hour)
+	sqlDB.SetMaxIdleConns(200)
+	sqlDB.SetMaxOpenConns(200)
+	sqlDB.SetConnMaxLifetime(time.Second * 10)
 
 	return db, nil
+}
+
+func RedisInit() (*redis.Client, error) {
+
+	rdb := redis.NewClient(&redis.Options{
+		Addr: "192.168.0.172:6379",
+		Password: "",
+		DB: 0,
+	})
+
+	return rdb, nil
 }
