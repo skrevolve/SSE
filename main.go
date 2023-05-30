@@ -18,6 +18,7 @@ type Client struct {
 	name   string
 	events chan *NoticeUrgent
 }
+
 type NoticeUrgent struct {
 	Notice string
 }
@@ -71,7 +72,6 @@ func noticeHandler(c *fiber.Ctx) error {
 }
 
 func updateNoticeUrgent(client *Client, db *gorm.DB) {
-
 	type Alert struct {
 		Idx	int
 		Alert bool
@@ -82,9 +82,7 @@ func updateNoticeUrgent(client *Client, db *gorm.DB) {
 
 	for {
 		db.Raw(`SELECT alert, notice FROM alert LIMIT 1`).Scan(&result)
-
 		notice := ""
-
 		if result[0].Alert {
 			notice = result[0].Notice
 		}
@@ -92,8 +90,8 @@ func updateNoticeUrgent(client *Client, db *gorm.DB) {
 		db := &NoticeUrgent{
 			Notice: notice,
 		}
-		client.events <- db
 
+		client.events <- db
 	}
 }
 
