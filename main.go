@@ -1,24 +1,3 @@
-// package main
-
-// import (
-// 	"log"
-
-// 	"github.com/skrevolve/sse/routes"
-// 	"github.com/skrevolve/sse/server"
-// )
-
-// func main() {
-
-// 	app := server.Create()
-
-// 	routes.Init(app)
-
-// 	if err := server.Listen(app); err != nil {
-// 		log.Panic(err)
-// 	}
-// }
-
-// main.go
 package main
 
 import (
